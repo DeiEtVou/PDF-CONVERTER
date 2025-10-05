@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF CONVERTER</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <h1>Convert Your Images to PDF</h1>
+            <p class="subtitle">Para sa mga tamad magbasa sa libro HAHAHA</p>
+          
+            <div class="settings-panel">
+                <div class="settings-title">PDF Settings</div>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="pdfName"> PDF Name:</label>
+                        <input type="text" id="pdfName" value="" placeholder="Enter PDF name">
+                    </div>
+                    <div class="setting-item">
+                        <label for="pageSize">Page Size:</label>
+                        <select id="pageSize">
+                            <option value="a4">A4</option>
+                            <option value="letter">Letter</option>
+                            <option value="legal">Legal</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="orientation">Orientation:</label>
+                        <select id="orientation">
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="imageQuality">Image Quality:</label>
+                        <select id="imageQuality">
+                            <option value="high">High</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">🌸</div>
+                <h3>Click to upload your images</h3>
+                <p>Supports JPG, PNG, & GIF</p>
+                <input type="file" id="fileInput" accept="image/*" multiple>
+            </div>
+
+            <div class="image-count" id="imageCount"></div>
+            <div class="content-list" id="contentList"></div>
+
+            <div class="button-group">
+                <button class="btn convert-btn" id="convertBtn" disabled> Convert to PDF</button>
+                <button class="btn clear-btn" id="clearBtn" disabled>Clear All</button>
+            </div>
+
+            <div id="status"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
