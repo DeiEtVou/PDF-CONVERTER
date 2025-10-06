@@ -10,8 +10,29 @@ const pageSizeSelect = document.getElementById('pageSize');
 const orientationSelect = document.getElementById('orientation');
 const imageQualitySelect = document.getElementById('imageQuality');
 const contentList = document.getElementById('contentList');
+const themeToggle = document.getElementById('themeToggle');
 
 let contentItems = [];
+let nextId = 1; // Counter for unique IDs
+
+// Theme toggle functionality
+const initTheme = () => {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeToggle.querySelector('.theme-icon').textContent = '☀️';
+    }
+};
+
+themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    themeToggle.querySelector('.theme-icon').textContent = isDark ? '☀️' : '🌙';
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+});
+
+// Initialize theme on page load
+initTheme();
 
 // Upload area click event
 uploadArea.addEventListener('click', () => fileInput.click());
@@ -36,6 +57,8 @@ uploadArea.addEventListener('drop', (e) => {
 // File input change event
 fileInput.addEventListener('change', (e) => {
     handleFiles(Array.from(e.target.files));
+    // Reset file input to allow selecting the same files again
+    fileInput.value = '';
 });
 
 // Handle uploaded files
@@ -43,7 +66,9 @@ function handleFiles(files) {
     files.forEach(file => {
         const reader = new FileReader();
         reader.onload = (e) => {
+            // Add unique ID to maintain order
             contentItems.push({
+                id: nextId++,
                 type: 'image',
                 data: e.target.result,
                 name: file.name
@@ -65,24 +90,24 @@ function updateContentList() {
         contentItem.className = 'content-item';
         
         contentItem.innerHTML = `
-            <img src="${item.data}" class="content-image-thumb" alt="Image">
+            <img src="${item.data}" class="content-image-thumb" alt="Image ${index + 1}">
             <div class="content-info">
-                <div class="content-name">${item.name}</div>
+                <div class="content-name">#${index + 1} - ${item.name}</div>
                 <div class="content-order">
                     ${index > 0 ? `<button class="order-btn" onclick="moveContent(${index}, -1)">⬆️ Up</button>` : ''}
                     ${index < contentItems.length - 1 ? `<button class="order-btn" onclick="moveContent(${index}, 1)">⬇️ Down</button>` : ''}
                 </div>
             </div>
-            <button class="content-remove" onclick="removeContent(${index})">×</button>
+            <button class="content-remove" onclick="removeContent(${item.id})">×</button>
         `;
         
         contentList.appendChild(contentItem);
     });
 }
 
-// Remove content item
-window.removeContent = function(index) {
-    contentItems.splice(index, 1);
+// Remove content item by ID
+window.removeContent = function(id) {
+    contentItems = contentItems.filter(item => item.id !== id);
     updateContentList();
     updateButtons();
     updateImageCount();
@@ -92,6 +117,7 @@ window.removeContent = function(index) {
 window.moveContent = function(index, direction) {
     const newIndex = index + direction;
     if (newIndex >= 0 && newIndex < contentItems.length) {
+        // Swap items in array
         [contentItems[index], contentItems[newIndex]] = [contentItems[newIndex], contentItems[index]];
         updateContentList();
     }
@@ -109,7 +135,7 @@ function updateImageCount() {
     const imageCountNum = contentItems.length;
     
     if (imageCountNum > 0) {
-        imageCount.textContent = `${imageCountNum} image${imageCountNum > 1 ? 's' : ''} 🎀`;
+        imageCount.textContent = `${imageCountNum} image${imageCountNum > 1 ? 's' : ''} 📄`;
     } else {
         imageCount.textContent = '';
     }
@@ -118,6 +144,7 @@ function updateImageCount() {
 // Clear button event
 clearBtn.addEventListener('click', () => {
     contentItems = [];
+    nextId = 1; // Reset ID counter
     updateContentList();
     updateButtons();
     updateImageCount();
@@ -132,7 +159,7 @@ convertBtn.addEventListener('click', async () => {
     if (contentItems.length === 0) return;
 
     try {
-        statusDiv.innerHTML = '<div class="status info">💫 Converting to PDF...</div>';
+        statusDiv.innerHTML = '<div class="status info">⏳ Converting to PDF...</div>';
         convertBtn.disabled = true;
         clearBtn.disabled = true;
 
@@ -149,11 +176,16 @@ convertBtn.addEventListener('click', async () => {
         const pageHeight = pdf.internal.pageSize.getHeight();
         const margin = 15;
         const usableWidth = pageWidth - (2 * margin);
-        let currentY = margin;
-        let isFirstPage = true;
+        const usableHeight = pageHeight - (2 * margin);
         
+        // Process each image in order
         for (let i = 0; i < contentItems.length; i++) {
             const item = contentItems[i];
+            
+            // Add new page for each image (except the first one)
+            if (i > 0) {
+                pdf.addPage();
+            }
             
             const img = new Image();
             img.src = item.data;
@@ -164,19 +196,18 @@ convertBtn.addEventListener('click', async () => {
                     let imgWidth = usableWidth;
                     let imgHeight = imgWidth / imgRatio;
                     
-                    if (imgHeight > pageHeight - (2 * margin)) {
-                        imgHeight = pageHeight - (2 * margin);
+                    // If image is too tall, scale by height instead
+                    if (imgHeight > usableHeight) {
+                        imgHeight = usableHeight;
                         imgWidth = imgHeight * imgRatio;
                     }
                     
-                    if (currentY + imgHeight > pageHeight - margin && !isFirstPage) {
-                        pdf.addPage();
-                        currentY = margin;
-                    }
+                    // Center the image on the page
+                    const x = (pageWidth - imgWidth) / 2;
+                    const y = (pageHeight - imgHeight) / 2;
                     
-                    pdf.addImage(item.data, 'JPEG', margin, currentY, imgWidth, imgHeight);
-                    currentY += imgHeight + 10;
-                    isFirstPage = false;
+                    // Add image to current page
+                    pdf.addImage(item.data, 'JPEG', x, y, imgWidth, imgHeight);
                     resolve();
                 };
             });
@@ -184,7 +215,7 @@ convertBtn.addEventListener('click', async () => {
         
         const pdfName = pdfNameInput.value.trim() || 'my-lovely-pdf';
         pdf.save(`${pdfName}.pdf`);
-        statusDiv.innerHTML = '<div class="status success">💖 PDF created successfully! Download started! 💖</div>';
+        statusDiv.innerHTML = '<div class="status success">✅ PDF created successfully! Download started!</div>';
         
         setTimeout(() => {
             statusDiv.innerHTML = '';
@@ -192,7 +223,7 @@ convertBtn.addEventListener('click', async () => {
         
     } catch (error) {
         console.error(error);
-        statusDiv.innerHTML = '<div class="status error">😢 Error creating PDF. Please try again.</div>';
+        statusDiv.innerHTML = '<div class="status error">❌ Error creating PDF. Please try again.</div>';
     } finally {
         convertBtn.disabled = false;
         clearBtn.disabled = false;
